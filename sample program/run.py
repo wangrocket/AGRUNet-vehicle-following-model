@@ -15,7 +15,7 @@ de_model = 512
 head = 8
 
 
-# load data
+
 car_following_train_data=np.load('Waymo_train_data.npy', allow_pickle=True)
 car_following_val_data=np.load('Waymo_val_data.npy', allow_pickle=True)
 
