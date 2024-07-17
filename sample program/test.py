@@ -12,7 +12,7 @@ Ts = 0.1
 de_model = 512
 head = 8
 
-# load data
+
 car_following_test_data=np.load('Waymo_test_data.npy', allow_pickle=True)
 
 max_len = 150 # for HighD dataset for others are 150
