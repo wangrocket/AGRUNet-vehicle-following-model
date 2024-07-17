@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 
-ACC_LIMIT = 3  # the limit of acceleration, this can be calibrated based on the data
-Ts = 0.1  # time interval for data sampling for HighD is 0.04 for other datasets are 0.1
+ACC_LIMIT = 3  
+Ts = 0.1  
 de_model = 512
 head = 8
 
@@ -79,8 +79,6 @@ class AGRU_model(nn.Module):
 
 # Test
 test_data = car_following_test_data
-dataset = 'HighD'
-model_type = 'Alstm'
 batch_size = 32
 total_epochs = 20
 test_dataset = ImitationCarFolData(split = 'test')
@@ -104,13 +102,11 @@ test_error_his = []
 print("---")
 # Testing, closed-loop prediction
 # Load the best model saved
-model = torch.load("AGRU_HighD_best_acclimt3.pt")
+model = torch.load("AGRU_waymo.pt")
 model.eval()
 
 error_list = []
-collsion_num = 0
-acc_bianhualv = []
-TTC_list = []
+
 for i, item in enumerate(test_loader):
 
     x_data, y_data = item['inputs'], item['label']
@@ -137,69 +133,19 @@ for i, item in enumerate(test_loader):
 
         # update next data
         if frame < T-1:
-            sv_spd_ = x_data[frame, :, 1] + acc_pre*Ts   #当frame=10，算的是第11时刻的跟随车速度
+            sv_spd_ = x_data[frame, :, 1] + acc_pre*Ts   
             MyDevice = torch.device('cuda:0')
             sv_spd_ = torch.tensor(np.maximum(np.array(sv_spd_.detach().cpu()), [0.001]), device=MyDevice)
-            delta_v_ = lv_spd[frame + 1] - sv_spd_  #第11时刻的速度差
-            delta_v = x_data[frame, :, -1] #第10时刻的速度差
-            spacing_ = x_data[frame, :, 0] + Ts*(delta_v + delta_v_)/2 #计算第11时刻的间距，要用第10时刻的间距去计算，在第10时刻的间距基础上变化
+            delta_v_ = lv_spd[frame + 1] - sv_spd_  
+            delta_v = x_data[frame, :, -1] 
+            spacing_ = x_data[frame, :, 0] + Ts*(delta_v + delta_v_)/2
 
             # update
-            next_frame_data = torch.stack((spacing_, sv_spd_, delta_v_)).transpose(0, 1) # B, 3 第11时刻间距 FV速度 速度差
-            x_data[frame + 1] = next_frame_data #更新数据，即相当于拿预测出的第11时刻数据导入，拿预测的数据继续预测下一时刻
-
-        TTC_single[frame - his_horizon] = -spacing_ / delta_v_
-    # 计算TTC
-    TTC_single = TTC_single.transpose(0, 1)
-    ttc_list = []
-    for m in range(32):
-        ttc_single = 0
-        for n in range(139):
-            if TTC_single[m][n].item() > 0:
-                ttc_single = TTC_single[m][n].item()
-                break
-        for n in range(139):
-            if ttc_single == 0:
-                break
-            if TTC_single[m][n].item() > 0:
-                if TTC_single[m][n].item() < ttc_single:
-                    ttc_single = TTC_single[m][n].item()
-        if ttc_single > 0:
-            ttc_list.append(ttc_single)
-
-    if len(ttc_list) > 0:
-        TTC_list.append(sum(ttc_list) / len(ttc_list))
-    
-
-
-
-    # 计算加速度变化率jerk
-    y_pre = y_pre.transpose(0, 1)
-    jerk = np.diff(y_pre.detach().numpy()) / Ts
-    jerk = np.mean(np.abs(jerk))
-    acc_bianhualv.append(jerk)
-
-
-
-
-
-    # Calculating spacing error for the closed-loop simulation
-    spacing_pre = x_data[..., 0]
-    spacing_obs = x_data_orig[..., 0]
-    for m in range(32):
-        for n in range(149):
-            if spacing_pre[n][m].item() < 0:
-                collsion_num += 1
-                # print(collsion_num)
-                break
+            next_frame_data = torch.stack((spacing_, sv_spd_, delta_v_)).transpose(0, 1) 
+            x_data[frame + 1] = next_frame_data
 
     error = criterion(spacing_pre, spacing_obs).item()
     error_list.append(error)
 model.train()
 mean_test_error = np.mean(error_list)
-mean_acc_bianhualv = np.mean(acc_bianhualv)
 
-print('mean_test_error', mean_test_error)
-print("collsion_num", collsion_num)
-print("acc_bianhualv", mean_acc_bianhualv)
-print("miniumu_ttc", np.mean(TTC_list))
