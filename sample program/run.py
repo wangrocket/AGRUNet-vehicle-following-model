@@ -9,8 +9,8 @@ from layers.Transformer_EncDec import Encoder, EncoderLayer
 from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import DataEmbedding
 
-ACC_LIMIT = 3  # the limit of acceleration, this can be calibrated based on the data
-Ts = 0.1  # time interval for data sampling for HighD is 0.04 for other datasets are 0.1
+ACC_LIMIT = 3  
+Ts = 0.1  
 de_model = 512
 head = 8
 
@@ -20,7 +20,7 @@ car_following_train_data=np.load('Waymo_train_data.npy', allow_pickle=True)
 car_following_val_data=np.load('Waymo_val_data.npy', allow_pickle=True)
 
 
-max_len = 150 # for HighD dataset for others are 150
+max_len = 150
 
 class ImitationCarFolData(torch.utils.data.Dataset):
     """
